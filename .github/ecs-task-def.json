@@ -1,0 +1,16 @@
+{
+  "family": "food-menu-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "3072",
+  "executionRoleArn": "arn:aws:iam::363934055577:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "food-menu-container",
+      "image": "363934055577.dkr.ecr.eu-central-1.amazonaws.com/food-menu-service:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 3000, "protocol": "tcp" }]
+    }
+  ]
+}

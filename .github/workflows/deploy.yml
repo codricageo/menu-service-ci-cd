@@ -2,14 +2,15 @@ name: Deploy to Amazon ECS
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
@@ -22,41 +23,22 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image to ECR (SHA tag)
-        env:
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+      - name: Build Docker image
         run: |
-          set -e
-          IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${GITHUB_SHA}"
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          docker build --platform linux/amd64 -t ${{ secrets.ECR_REPOSITORY }}:latest .
 
-          docker build --platform linux/amd64 -t "$IMAGE_URI" .
-          docker push "$IMAGE_URI"
-
-      - name: Render task definition (replace image)
-        id: render
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: ecs-task-def.json
-          container-name: food-menu-container
-          image: ${{ env.IMAGE_URI }}
-
-      - name: Set APP_VERSION env in task definition (inject SHA)
-        id: setenv
+      - name: Tag Docker image
         run: |
-          set -e
-          TASK_DEF_FILE="${{ steps.render.outputs.task-definition }}"
-          jq --arg v "${GITHUB_SHA}" '
-            (.containerDefinitions[] | select(.name=="food-menu-container")
-              | .environment) |=
-              ((. // []) | map(select(.name!="APP_VERSION")) + [{"name":"APP_VERSION","value":$v}])
-          ' "$TASK_DEF_FILE" > taskdef-final.json
+          docker tag ${{ secrets.ECR_REPOSITORY }}:latest \
+            ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
 
-      - name: Deploy ECS task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: taskdef-final.json
-          service: ${{ secrets.ECS_SERVICE }}
-          cluster: ${{ secrets.ECS_CLUSTER }}
+      - name: Push Docker image to Amazon ECR
+        run: |
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
+
+      - name: Update ECS service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --service ${{ secrets.ECS_SERVICE }} \
+            --force-new-deployment
