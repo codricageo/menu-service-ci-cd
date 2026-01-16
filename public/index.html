@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Food Menu Service</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap');
+
+    :root {
+      --bg: #0d1117;
+      --panel: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f4f6fb;
+      --muted: #9ba5b5;
+      --accent: #2dd4bf;
+      --accent-2: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Manrope', 'Segoe UI', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background: radial-gradient(circle at 20% 20%, rgba(45, 212, 191, 0.12), transparent 30%),
+        radial-gradient(circle at 80% 10%, rgba(245, 158, 11, 0.16), transparent 28%),
+        radial-gradient(circle at 60% 70%, rgba(56, 189, 248, 0.12), transparent 32%),
+        #0a0f17;
+      display: flex;
+      justify-content: center;
+      padding: 48px 20px 64px;
+    }
+
+    .shell {
+      width: min(1100px, 100%);
+    }
+
+    header {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 32px;
+      letter-spacing: -0.5px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(59, 130, 246, 0.1));
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.95em;
+      margin: 0;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(10px);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      letter-spacing: -0.2px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .menu-item {
+      padding: 14px 14px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .menu-item:hover {
+      transform: translateY(-2px);
+      border-color: rgba(45, 212, 191, 0.35);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .menu-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .menu-name {
+      font-weight: 700;
+    }
+
+    .tag {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      color: #0b0e14;
+      font-weight: 700;
+      background: linear-gradient(120deg, #2dd4bf, #0ea5e9);
+    }
+
+    .price {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    .error {
+      color: #fca5a5;
+      margin-top: 8px;
+      font-weight: 600;
+    }
+
+    .footer {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.18);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <h1>Food Menu</h1>
+        <p class="muted">Static UI powered by the Express API.</p>
+      </div>
+      <div class="pill">
+        <span class="badge-dot"></span>
+        <span>Version <span id="app-version">loading...</span></span>
+      </div>
+    </header>
+
+    <div class="card" id="menu-card">
+      <h2>Available Items</h2>
+      <ul id="menu-list" class="menu-grid"></ul>
+      <div class="error" id="menu-error" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    async function fetchMenu() {
+      const listEl = document.getElementById('menu-list');
+      const errorEl = document.getElementById('menu-error');
+      listEl.innerHTML = '';
+      errorEl.style.display = 'none';
+      try {
+        const res = await fetch('/api/menu');
+        if (!res.ok) throw new Error('Failed to load menu');
+        const data = await res.json();
+        data.items.forEach(item => {
+          const li = document.createElement('li');
+          li.className = 'menu-item';
+          li.innerHTML = `
+            <div class="menu-top">
+              <span class="menu-name">${item.name}</span>
+              <span class="tag">${item.category}</span>
+            </div>
+            <span class="price">$${item.price.toFixed(2)}</span>
+          `;
+          listEl.appendChild(li);
+        });
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+    }
+
+    async function fetchVersion() {
+      const versionEl = document.getElementById('app-version');
+      try {
+        const res = await fetch('/version');
+        if (!res.ok) throw new Error('n/a');
+        const data = await res.json();
+        versionEl.textContent = data.version;
+      } catch (err) {
+        versionEl.textContent = 'unavailable';
+      }
+    }
+
+    fetchMenu();
+    fetchVersion();
+  </script>
+</body>
+</html>
