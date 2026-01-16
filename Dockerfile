@@ -3,15 +3,12 @@ FROM node:18-alpine
 WORKDIR /app
 
 COPY package*.json ./
-
-
-RUN npm install
+RUN npm ci
 
 COPY . .
 
+# If you have a build step, this will run it (otherwise it will fail)
+RUN npm run build
+
 EXPOSE 3000
-
 CMD ["npm", "start"]
-
-# This Dockerfile sets up a Node.js application using the official Node.js 18 Alpine image.
-# It copies the application files, installs dependencies, and starts the application on port 3000.
